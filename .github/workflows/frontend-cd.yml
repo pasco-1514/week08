@@ -47,8 +47,5 @@ jobs:
             frontend-container=${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} \
             -n ecommerce
 
-      - name: Wait for rollout
-        run: kubectl rollout status deployment/frontend -n ecommerce
-
       - run: az logout
         if: always()
