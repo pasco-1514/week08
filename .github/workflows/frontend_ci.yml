@@ -3,12 +3,12 @@ name: Frontend CI - Build & Push Image
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [ "development" ]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
   push:
-    branches: [ "main" ]
+    branches: [ "development" ]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
