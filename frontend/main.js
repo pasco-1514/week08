@@ -1,6 +1,5 @@
 // week08/frontend/main.js
-//frontend CI test 2
-
+//frontend CI test 1
 document.addEventListener('DOMContentLoaded', () => {
     // API endpoints for the Product and Order services.
     // These ports (30000 for Product, 30001 for Order) are mapped
