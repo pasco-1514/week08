@@ -24,14 +24,31 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - run: az aks get-credentials --resource-group ${{ secrets.AKS_RG }} --name ${{ secrets.AKS_NAME }} --overwrite-existing
-
-      - run: az acr login --name ${{ env.ACR_LOGIN_SERVER }}
-
-      - name: Deploy Frontend
+      - name: Get AKS credentials
         run: |
-          cd k8s/
-          kubectl set image deployment/frontend frontend=${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} -n ecommerce
+          az aks get-credentials \
+            --resource-group ${{ secrets.AKS_RG }} \
+            --name ${{ secrets.AKS_NAME }} \
+            --overwrite-existing
+
+      - name: ACR login
+        run: az acr login --name $(echo ${{ env.ACR_LOGIN_SERVER }} | cut -d. -f1)
+
+      - name: Ensure namespace exists
+        run: kubectl create namespace ecommerce --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/ -n ecommerce
+
+      - name: Update Frontend image
+        run: |
+          kubectl set image deployment/frontend \
+            frontend-container=${{ env.ACR_LOGIN_SERVER }}/frontend:${{ env.IMAGE_TAG }} \
+            -n ecommerce
+
+      - name: Wait for rollout
+        run: kubectl rollout status deployment/frontend -n ecommerce
 
       - run: az logout
         if: always()
