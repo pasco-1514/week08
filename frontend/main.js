@@ -1,4 +1,5 @@
 // week08/frontend/main.js
+//frontend CI test
 
 document.addEventListener('DOMContentLoaded', () => {
     // API endpoints for the Product and Order services.
