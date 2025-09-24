@@ -1,5 +1,5 @@
 # week08/backend/order_service/app/schemas.py
-# using this file to test the backend    CD
+# using this file to test the backend-CI
 
 from datetime import datetime
 from typing import List, Optional
