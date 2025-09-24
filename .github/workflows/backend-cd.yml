@@ -1,54 +1,50 @@
-# week08/.github/workflows/backend_ci.yml
-
-name: Backend CI - Test, Build and Push Images to ACR
-
+name: CD - Deploy Backend Services to AKS
 
 on:
-  pull_request:
-    branches: [ "development" ]
-    paths: [ "backend/**" ]
   push:
-    branches: [ "development" ]
-    paths: [ "backend/**" ]
-
-env:
-  ACR_LOGIN_SERVER: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-  IMAGE_TAG: ${{ github.sha }}
+    branches: [ "main" ]
+    paths:
+      - 'backend/**'
+      - 'k8s/**'
+      - '.github/workflows/backend-cd.yml'
 
 jobs:
-  test_and_build:
+  deploy_backend:
     runs-on: ubuntu-latest
+    environment: Production
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - run: pip install pytest httpx
-      - run: pip install -r backend/product_service/requirements.txt
-      - run: pytest backend/product_service/tests
-
-      - run: pip install -r backend/order_service/requirements.txt
-      - run: pytest backend/order_service/tests
 
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - run: az acr login --name ${{ env.ACR_LOGIN_SERVER }}
+      - name: Set Kubernetes context
+        run: |
+          az aks get-credentials --resource-group ${{ secrets.AKS_RG }} \
+                                 --name ${{ secrets.AKS_NAME }} \
+                                 --overwrite-existing
 
-      - run: docker build -t ${{ env.ACR_LOGIN_SERVER }}/product_service:${{ env.IMAGE_TAG }} ./backend/product_service
-      - run: docker push ${{ env.ACR_LOGIN_SERVER }}/product_service:${{ env.IMAGE_TAG }}
+      - name: Attach ACR
+        run: |
+          az aks update --name ${{ secrets.AKS_NAME }} \
+                        --resource-group ${{ secrets.AKS_RG }} \
+                        --attach-acr ${{ secrets.AZURE_CONTAINER_REGISTRY }}
 
-      - run: docker build -t ${{ env.ACR_LOGIN_SERVER }}/order_service:${{ env.IMAGE_TAG }} ./backend/order_service
-      - run: docker push ${{ env.ACR_LOGIN_SERVER }}/order_service:${{ env.IMAGE_TAG }}
+      - name: Deploy Backend Infrastructure
+        run: |
+          cd k8s/
+          kubectl apply -f configmaps.yaml
+          kubectl apply -f secrets.yaml
+          kubectl apply -f product-db.yaml
+          kubectl apply -f order-db.yaml
+
+      - name: Deploy Backend Services
+        run: |
+          cd k8s/
+          kubectl apply -f product-service.yaml
+          kubectl apply -f order-service.yaml
 
       - run: az logout
         if: always()
